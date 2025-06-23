@@ -18,7 +18,7 @@ struct config_t {
     int initial_height;
 };
 
-static const config_t config = {20.0, 80.0, 5, 500, 2000, 200, 200};
+static const config_t config = { 20.0, 80.0, 5, 500, 2000, 1000, 1000 };
 
 class MyWindow : public Gtk::Window {
 public:
@@ -105,7 +105,7 @@ private:
 
 int main(int argc, char *argv[]) {
     srand(time(nullptr));
-    auto app = Gtk::Application::create(argc, argv, "org.gtkmm.example");
+    auto app = Gtk::Application::create(argc, argv, "org.gtkmm.kicker");
     MyWindow window;
     window.set_default_size(config.initial_width, config.initial_height);
     window.set_resizable(false);
