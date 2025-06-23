@@ -27,12 +27,25 @@ public:
         add_events(Gdk::BUTTON_PRESS_MASK);
         m_animation_connection = Glib::signal_timeout().connect(sigc::mem_fun(*this, &MyWindow::on_timeout), 33);
         schedule_circle_creation();
+        m_click_counter = 0;
     }
 
 protected:
     bool on_button_press_event(GdkEventButton* event) override {
-        std::cout << "Mouse click detected at ("
-                  << event->x << ", " << event->y << ")" << std::endl;
+        double click_x = event->x;
+        double click_y = event->y;
+        auto it = m_circles.begin();
+        while (it != m_circles.end()) {
+            double dx = click_x - it->center_x;
+            double dy = click_y - it->center_y;
+            if (std::sqrt(dx*dx + dy*dy) <= it->radius) {
+                it = m_circles.erase(it);
+                m_click_counter++;
+            } else {
+                ++it;
+            }
+        }
+        std::cout << "Click counter: " << m_click_counter << std::endl;
         return Gtk::Window::on_button_press_event(event);
     }
 
@@ -87,6 +100,7 @@ private:
     const double m_decrement;
     sigc::connection m_animation_connection;
     sigc::connection m_creation_connection;
+    int m_click_counter;
 };
 
 int main(int argc, char *argv[]) {
