@@ -7,6 +7,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <ctime>
+#include <random>
 
 struct config_t {
     double min_radius;
@@ -17,7 +18,9 @@ struct config_t {
     int initial_height;
     int circle_coeff;
     int get_creation_interval() const {
-        return min_creation_interval + rand() % (max_creation_interval - min_creation_interval + 1);
+        static std::mt19937 rng(std::random_device{}());
+        std::uniform_int_distribution<int> dist(min_creation_interval, max_creation_interval);
+        return dist(rng);
     }
 };
 
@@ -56,9 +59,13 @@ protected:
         const int win_width = get_allocated_width();
         const int win_height = get_allocated_height();
         if(m_circles.size() < static_cast<size_t>(5 + config.circle_coeff * m_click_counter)) {
-            double radius = config.min_radius + (config.max_radius - config.min_radius) * (static_cast<double>(rand())/RAND_MAX);
-            double center_x = radius + (win_width - 2*radius) * (static_cast<double>(rand())/RAND_MAX);
-            double center_y = radius + (win_height - 2*radius) * (static_cast<double>(rand())/RAND_MAX);
+            static std::mt19937 rng(std::random_device{}());
+            std::uniform_real_distribution<double> dist_radius(config.min_radius, config.max_radius);
+            double radius = dist_radius(rng);
+            std::uniform_real_distribution<double> dist_x(radius, win_width - radius);
+            std::uniform_real_distribution<double> dist_y(radius, win_height - radius);
+            double center_x = dist_x(rng);
+            double center_y = dist_y(rng);
             m_circles.push_back({radius, center_x, center_y});
         }
         schedule_circle_creation();
@@ -120,7 +127,6 @@ private:
 };
 
 int main(int argc, char *argv[]) {
-    srand(time(nullptr));
     auto app = Gtk::Application::create(argc, argv, "org.gtkmm.kicker");
     MyWindow window;
     window.set_default_size(config.initial_width, config.initial_height);
