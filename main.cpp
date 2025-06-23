@@ -91,6 +91,9 @@ protected:
             it->radius -= delta;
             if(it->radius <= 0) {
                 m_click_counter--;
+                if(m_click_counter < 0) {
+                    m_click_counter = 0;
+                }
                 it = m_circles.erase(it);
             } else {
                 ++it;
