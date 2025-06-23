@@ -61,7 +61,7 @@ protected:
             }
         }
         std::cout << "Click counter: " << state.click_counter << std::endl;
-        return Gtk::Window::on_button_press_event(event);
+        return true;
     }
 
     bool on_circle_creation() {
