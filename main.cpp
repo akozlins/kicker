@@ -81,6 +81,7 @@ protected:
         for(auto it = m_circles.begin(); it != m_circles.end();) {
             it->radius -= delta;
             if(it->radius <= 0) {
+                m_click_counter--;
                 it = m_circles.erase(it);
             } else {
                 ++it;
