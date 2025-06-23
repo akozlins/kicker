@@ -16,6 +16,9 @@ struct config_t {
     int initial_width;
     int initial_height;
     int circle_coeff;
+    int get_creation_interval() const {
+        return min_creation_interval + rand() % (max_creation_interval - min_creation_interval + 1);
+    }
 };
 
 static config_t config = { 20.0, 80.0, 500, 2000, 1000, 1000, 1 };
@@ -63,7 +66,7 @@ protected:
     }
 
     void schedule_circle_creation() {
-        int interval = config.min_creation_interval + rand() % (config.max_creation_interval - config.min_creation_interval + 1);
+        int interval = config.get_creation_interval();
         m_creation_connection = Glib::signal_timeout().connect(sigc::mem_fun(*this, &MyWindow::on_circle_creation), interval);
     }
 
