@@ -25,7 +25,7 @@ struct state_t {
         return dist(rng);
     }
 };
-    
+
 static state_t state = { 20.0, 80.0, 500, 2000, 1000, 1000, 1, 5.0, 0 };
 
 class MyWindow : public Gtk::Window {
@@ -41,6 +41,7 @@ protected:
     bool on_button_press_event(GdkEventButton* event) override {
         double click_x = event->x;
         double click_y = event->y;
+        bool clicked_any = false;
         auto it = m_circles.begin();
         while (it != m_circles.end()) {
             double dx = click_x - it->center_x;
@@ -48,8 +49,15 @@ protected:
             if (std::sqrt(dx*dx + dy*dy) <= it->radius) {
                 it = m_circles.erase(it);
                 state.click_counter++;
+                clicked_any = true;
             } else {
                 ++it;
+            }
+        }
+        if (!clicked_any) {
+            state.click_counter--;
+            if (state.click_counter < 0) {
+                state.click_counter = 0;
             }
         }
         std::cout << "Click counter: " << state.click_counter << std::endl;
