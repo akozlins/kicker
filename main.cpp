@@ -11,23 +11,20 @@
 struct config_t {
     double min_radius;
     double max_radius;
+    int max_circles;
+    int min_creation_interval;
+    int max_creation_interval;
 };
 
-static const config_t config = {20.0, 80.0};
+static const config_t config = {20.0, 80.0, 5, 500, 2000};
 
 class MyWindow : public Gtk::Window {
 public:
     MyWindow() : m_decrement(5.0) {
         set_app_paintable(true);
         add_events(Gdk::BUTTON_PRESS_MASK);
-        const int win_width = 200;
-        const int win_height = 200;
-        // Compute random starting radius within config limits
-        m_circle_radius = config.min_radius + (config.max_radius - config.min_radius) * (static_cast<double>(rand())/RAND_MAX);
-        // Ensure the circle appears fully inside the window area.
-        m_circle_center_x = m_circle_radius + (win_width - 2*m_circle_radius) * (static_cast<double>(rand())/RAND_MAX);
-        m_circle_center_y = m_circle_radius + (win_height - 2*m_circle_radius) * (static_cast<double>(rand())/RAND_MAX);
-        m_connection = Glib::signal_timeout().connect(sigc::mem_fun(*this, &MyWindow::on_timeout), 33);
+        m_animation_connection = Glib::signal_timeout().connect(sigc::mem_fun(*this, &MyWindow::on_timeout), 33);
+        schedule_circle_creation();
     }
 
 protected:
@@ -37,30 +34,57 @@ protected:
         return Gtk::Window::on_button_press_event(event);
     }
 
+    bool on_circle_creation() {
+        const int win_width = get_allocated_width();
+        const int win_height = get_allocated_height();
+        if(m_circles.size() < static_cast<size_t>(config.max_circles)) {
+            double radius = config.min_radius + (config.max_radius - config.min_radius) * (static_cast<double>(rand())/RAND_MAX);
+            double center_x = radius + (win_width - 2*radius) * (static_cast<double>(rand())/RAND_MAX);
+            double center_y = radius + (win_height - 2*radius) * (static_cast<double>(rand())/RAND_MAX);
+            m_circles.push_back({radius, center_x, center_y});
+        }
+        schedule_circle_creation();
+        return false;
+    }
+
+    void schedule_circle_creation() {
+        int interval = config.min_creation_interval + rand() % (config.max_creation_interval - config.min_creation_interval + 1);
+        m_creation_connection = Glib::signal_timeout().connect(sigc::mem_fun(*this, &MyWindow::on_circle_creation), interval);
+    }
+
     bool on_draw(const Cairo::RefPtr<Cairo::Context>& cr) override {
-        cr->set_source_rgb(1, 0, 0);
-        cr->arc(m_circle_center_x, m_circle_center_y, m_circle_radius, 0, 2 * M_PI);
-        cr->fill();
+        for (const auto& circle : m_circles) {
+            cr->set_source_rgb(1, 0, 0);
+            cr->arc(circle.center_x, circle.center_y, circle.radius, 0, 2 * M_PI);
+            cr->fill();
+        }
         return true;
     }
 
     bool on_timeout() {
         double delta = m_decrement * 33 / 1000.0;
-        m_circle_radius -= delta;
-        if (m_circle_radius <= 0) {
-            m_circle_radius = 0;
-            m_connection.disconnect();
+        for(auto it = m_circles.begin(); it != m_circles.end();) {
+            it->radius -= delta;
+            if(it->radius <= 0) {
+                it = m_circles.erase(it);
+            } else {
+                ++it;
+            }
         }
         queue_draw();
-        return (m_circle_radius > 0);
+        return true;
     }
 
 private:
-    double m_circle_radius;
-    double m_circle_center_x;
-    double m_circle_center_y;
+    struct Circle {
+        double radius;
+        double center_x;
+        double center_y;
+    };
+    std::vector<Circle> m_circles;
     const double m_decrement;
-    sigc::connection m_connection;
+    sigc::connection m_animation_connection;
+    sigc::connection m_creation_connection;
 };
 
 int main(int argc, char *argv[]) {
