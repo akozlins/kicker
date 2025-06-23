@@ -73,6 +73,15 @@ protected:
             cr->arc(circle.center_x, circle.center_y, circle.radius, 0, 2 * M_PI);
             cr->fill();
         }
+        // Draw counter in top-left corner
+        cr->set_source_rgb(0, 0, 0);
+        cr->select_font_face("Sans", Cairo::FONT_SLANT_NORMAL, Cairo::FONT_WEIGHT_BOLD);
+        cr->set_font_size(20);
+        {
+            std::string counter_text = "Counter: " + std::to_string(m_click_counter);
+            cr->move_to(10, 30);
+            cr->show_text(counter_text);
+        }
         return true;
     }
 
