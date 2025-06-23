@@ -9,7 +9,7 @@
 #include <ctime>
 #include <random>
 
-struct config_t {
+struct state_t {
     double min_radius;
     double max_radius;
     int min_creation_interval;
@@ -24,7 +24,7 @@ struct config_t {
     }
 };
 
-static config_t state = { 20.0, 80.0, 500, 2000, 1000, 1000, 1 };
+static state_t state = { 20.0, 80.0, 500, 2000, 1000, 1000, 1 };
 
 class MyWindow : public Gtk::Window {
 public:
