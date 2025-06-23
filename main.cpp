@@ -11,14 +11,14 @@
 struct config_t {
     double min_radius;
     double max_radius;
-    int max_circles;
     int min_creation_interval;
     int max_creation_interval;
     int initial_width;
     int initial_height;
+    int circle_coeff;
 };
 
-static const config_t config = { 20.0, 80.0, 5, 500, 2000, 1000, 1000 };
+static config_t config = { 20.0, 80.0, 500, 2000, 1000, 1000, 1 };
 
 class MyWindow : public Gtk::Window {
 public:
@@ -52,7 +52,7 @@ protected:
     bool on_circle_creation() {
         const int win_width = get_allocated_width();
         const int win_height = get_allocated_height();
-        if(m_circles.size() < static_cast<size_t>(config.max_circles)) {
+        if(m_circles.size() < static_cast<size_t>(5 + config.circle_coeff * m_click_counter)) {
             double radius = config.min_radius + (config.max_radius - config.min_radius) * (static_cast<double>(rand())/RAND_MAX);
             double center_x = radius + (win_width - 2*radius) * (static_cast<double>(rand())/RAND_MAX);
             double center_y = radius + (win_height - 2*radius) * (static_cast<double>(rand())/RAND_MAX);
