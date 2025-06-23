@@ -24,7 +24,7 @@ struct config_t {
     }
 };
 
-static config_t config = { 20.0, 80.0, 500, 2000, 1000, 1000, 1 };
+static config_t state = { 20.0, 80.0, 500, 2000, 1000, 1000, 1 };
 
 class MyWindow : public Gtk::Window {
 public:
@@ -58,9 +58,9 @@ protected:
     bool on_circle_creation() {
         const int win_width = get_allocated_width();
         const int win_height = get_allocated_height();
-        if(m_circles.size() < static_cast<size_t>(5 + config.circle_coeff * m_click_counter)) {
+        if(m_circles.size() < static_cast<size_t>(5 + state.circle_coeff * m_click_counter)) {
             static std::mt19937 rng(std::random_device{}());
-            std::uniform_real_distribution<double> dist_radius(config.min_radius, config.max_radius);
+            std::uniform_real_distribution<double> dist_radius(state.min_radius, state.max_radius);
             double radius = dist_radius(rng);
             std::uniform_real_distribution<double> dist_x(radius, win_width - radius);
             std::uniform_real_distribution<double> dist_y(radius, win_height - radius);
@@ -73,7 +73,7 @@ protected:
     }
 
     void schedule_circle_creation() {
-        int interval = config.get_creation_interval();
+        int interval = state.get_creation_interval();
         m_creation_connection = Glib::signal_timeout().connect(sigc::mem_fun(*this, &MyWindow::on_circle_creation), interval);
     }
 
@@ -84,7 +84,7 @@ protected:
             cr->fill();
         }
         // Draw counter in top-left corner
-        cr->set_source_rgb(0, 0, 0);
+        cr->set_source_rgb(0, 1, 0);
         cr->select_font_face("Sans", Cairo::FONT_SLANT_NORMAL, Cairo::FONT_WEIGHT_BOLD);
         cr->set_font_size(20);
         {
@@ -129,7 +129,7 @@ private:
 int main(int argc, char *argv[]) {
     auto app = Gtk::Application::create(argc, argv, "org.gtkmm.kicker");
     MyWindow window;
-    window.set_default_size(config.initial_width, config.initial_height);
+    window.set_default_size(state.initial_width, state.initial_height);
     window.set_resizable(false);
     return app->run(window);
 }
