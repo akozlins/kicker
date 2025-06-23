@@ -11,7 +11,7 @@ public:
     MyWindow() : m_circle_radius(50.0), m_decrement(5.0) {
         set_app_paintable(true);
         add_events(Gdk::BUTTON_PRESS_MASK);
-        m_connection = Glib::signal_timeout().connect(sigc::mem_fun(*this, &MyWindow::on_timeout), 1000);
+        m_connection = Glib::signal_timeout().connect(sigc::mem_fun(*this, &MyWindow::on_timeout), 33);
     }
 
 protected:
@@ -33,7 +33,8 @@ protected:
     }
 
     bool on_timeout() {
-        m_circle_radius -= m_decrement;
+        double delta = m_decrement * 33 / 1000.0;
+        m_circle_radius -= delta;
         if (m_circle_radius <= 0) {
             m_circle_radius = 0;
             m_connection.disconnect();
