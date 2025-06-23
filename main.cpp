@@ -21,7 +21,7 @@ struct state_t {
     int click_counter;
     int get_creation_interval() const {
         static std::mt19937 rng(std::random_device{}());
-        std::uniform_int_distribution<int> dist(min_creation_interval, max_creation_interval);
+        std::uniform_int_distribution<int> dist(min_creation_interval/(1+0.1*click_counter), max_creation_interval/(1+0.1*click_counter));
         return dist(rng);
     }
 };
