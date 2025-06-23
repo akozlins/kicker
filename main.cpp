@@ -9,6 +9,7 @@
 class MyWindow : public Gtk::Window {
 public:
     MyWindow() : m_circle_radius(50.0), m_decrement(5.0) {
+        set_app_paintable(true);
         add_events(Gdk::BUTTON_PRESS_MASK);
         m_connection = Glib::signal_timeout().connect(sigc::mem_fun(*this, &MyWindow::on_timeout), 1000);
     }
@@ -19,7 +20,7 @@ protected:
                   << event->x << ", " << event->y << ")" << std::endl;
         return Gtk::Window::on_button_press_event(event);
     }
-    
+
     bool on_draw(const Cairo::RefPtr<Cairo::Context>& cr) override {
         int width = get_allocated_width();
         int height = get_allocated_height();
@@ -28,7 +29,7 @@ protected:
         cr->set_source_rgb(1, 0, 0);
         cr->arc(cx, cy, m_circle_radius, 0, 2 * M_PI);
         cr->fill();
-        return Gtk::Window::on_draw(cr);
+        return true;
     }
 
     bool on_timeout() {
@@ -47,8 +48,7 @@ private:
     sigc::connection m_connection;
 };
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
     auto app = Gtk::Application::create(argc, argv, "org.gtkmm.example");
     MyWindow window;
     window.set_default_size(200,200);
