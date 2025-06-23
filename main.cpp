@@ -42,16 +42,13 @@ protected:
         double click_x = event->x;
         double click_y = event->y;
         bool clicked_any = false;
-        auto it = m_circles.begin();
-        while (it != m_circles.end()) {
-            double dx = click_x - it->center_x;
-            double dy = click_y - it->center_y;
-            if (std::sqrt(dx*dx + dy*dy) <= it->radius) {
-                it = m_circles.erase(it);
+        for(auto& circle : m_circles) {
+            double dx = click_x - circle.center_x;
+            double dy = click_y - circle.center_y;
+            if (std::sqrt(dx*dx + dy*dy) <= circle.radius) {
+                circle.clicked = true;
                 state.click_counter++;
                 clicked_any = true;
-            } else {
-                ++it;
             }
         }
         if (!clicked_any) {
@@ -60,6 +57,10 @@ protected:
                 state.click_counter = 0;
             }
         }
+        // Remove all circles that were clicked.
+        m_circles.erase(
+            std::remove_if(m_circles.begin(), m_circles.end(), [](const Circle& c) { return c.clicked; }),
+            m_circles.end());
         std::cout << "Click counter: " << state.click_counter << std::endl;
         return true;
     }
@@ -109,9 +110,11 @@ protected:
         for(auto it = m_circles.begin(); it != m_circles.end();) {
             it->radius -= delta;
             if(it->radius <= 0) {
-                state.click_counter--;
-                if(state.click_counter < 0) {
-                    state.click_counter = 0;
+                if(!it->clicked) {  // Only decrement if circle was not clicked
+                    state.click_counter--;
+                    if(state.click_counter < 0) {
+                        state.click_counter = 0;
+                    }
                 }
                 it = m_circles.erase(it);
             } else {
@@ -127,6 +130,7 @@ private:
         double radius;
         double center_x;
         double center_y;
+        bool clicked;
     };
     std::vector<Circle> m_circles;
     sigc::connection m_animation_connection;
