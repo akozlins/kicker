@@ -14,9 +14,11 @@ struct config_t {
     int max_circles;
     int min_creation_interval;
     int max_creation_interval;
+    int initial_width;
+    int initial_height;
 };
 
-static const config_t config = {20.0, 80.0, 5, 500, 2000};
+static const config_t config = {20.0, 80.0, 5, 500, 2000, 200, 200};
 
 class MyWindow : public Gtk::Window {
 public:
@@ -91,7 +93,7 @@ int main(int argc, char *argv[]) {
     srand(time(nullptr));
     auto app = Gtk::Application::create(argc, argv, "org.gtkmm.example");
     MyWindow window;
-    window.set_default_size(200,200);
+    window.set_default_size(config.initial_width, config.initial_height);
     window.set_resizable(false);
     return app->run(window);
 }
