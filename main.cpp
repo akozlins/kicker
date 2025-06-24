@@ -1,15 +1,16 @@
 //
 
-#include <algorithm>
-#include "imgui.h"
 #include "backends/imgui_impl_glfw.h"
 #include "backends/imgui_impl_opengl3.h"
-#include <stdio.h>
+#include "imgui.h"
+
 #include <GLFW/glfw3.h>
-#include <vector>
-#include <random>
+
+#include <algorithm>
 #include <chrono>
-#include <cmath>
+#include <random>
+#include <vector>
+
 #include <cstdio>
 
 // Data structures based on previous state_t and Circle
@@ -24,10 +25,11 @@ struct state_t {
     double decrement;
     int click_counter;
     int get_creation_interval() const {
-        static std::mt19937 rng(std::random_device{}());
+        static std::mt19937 rng(std::random_device {}());
         // Adjust interval based on click_counter as before.
-        std::uniform_int_distribution<int> dist(min_creation_interval / (1 + 0.1 * click_counter),
-                                                  max_creation_interval / (1 + 0.1 * click_counter));
+        std::uniform_int_distribution<int> dist(
+            min_creation_interval / (1 + 0.1 * click_counter), max_creation_interval / (1 + 0.1 * click_counter)
+        );
         return dist(rng);
     }
 };
@@ -41,7 +43,7 @@ struct Circle {
 };
 
 static std::vector<Circle> circles;
-static std::mt19937 rng(std::random_device{}());
+static std::mt19937 rng(std::random_device {}());
 
 void schedule_circle_creation(float win_width, float win_height, double& circle_timer, int& creation_interval) {
     if(circles.size() < static_cast<size_t>(5 + state.circle_coeff * state.click_counter)) {
@@ -59,21 +61,20 @@ void schedule_circle_creation(float win_width, float win_height, double& circle_
 
 int main(int, char**) {
     // Setup GLFW window
-    if (!glfwInit())
-        return 1;
+    if(!glfwInit()) return 1;
     const char* glsl_version = "#version 130";
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
     GLFWwindow* window = glfwCreateWindow(state.initial_width, state.initial_height, "kicker (imgui)", NULL, NULL);
-    if (window == NULL)
-        return 1;
+    if(window == NULL) return 1;
     glfwMakeContextCurrent(window);
     glfwSwapInterval(1); // Enable vsync
 
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO(); (void)io;
+    ImGuiIO& io = ImGui::GetIO();
+    (void)io;
     // Setup Dear ImGui style and backend
     ImGui::StyleColorsDark();
     ImGui_ImplGlfw_InitForOpenGL(window, true);
@@ -87,8 +88,7 @@ int main(int, char**) {
     static auto label_time = std::chrono::high_resolution_clock::now();
     static float label_offset = 0.0f;
 
-    while (!glfwWindowShouldClose(window))
-    {
+    while(!glfwWindowShouldClose(window)) {
         glfwPollEvents();
         auto current_time = std::chrono::high_resolution_clock::now();
         double delta_time = std::chrono::duration<double, std::milli>(current_time - last_time).count();
@@ -104,25 +104,24 @@ int main(int, char**) {
         }
 
         // Handle mouse clicks
-        if (ImGui::IsMouseClicked(0)) {
+        if(ImGui::IsMouseClicked(0)) {
             ImVec2 mouse_pos = ImGui::GetMousePos();
             bool clicked_any = false;
             int delta = 0;
-            for (auto& circle : circles) {
+            for(auto& circle : circles) {
                 float dx = mouse_pos.x - circle.center.x;
                 float dy = mouse_pos.y - circle.center.y;
-                if (std::sqrt(dx*dx + dy*dy) <= circle.radius) {
+                if(std::sqrt(dx * dx + dy * dy) <= circle.radius) {
                     circle.clicked = true;
                     delta++;
                     clicked_any = true;
                 }
             }
-            if (!clicked_any) {
+            if(!clicked_any) {
                 delta = -1;
             }
             state.click_counter += delta;
-            if (state.click_counter < 0)
-                state.click_counter = 0;
+            if(state.click_counter < 0) state.click_counter = 0;
             // Store the delta and click position for display
             last_delta = delta;
             last_click_pos = mouse_pos;
@@ -130,22 +129,22 @@ int main(int, char**) {
             label_offset = 0.0f;
             // Remove clicked circles
             circles.erase(
-                std::remove_if(circles.begin(), circles.end(), [](const Circle& c) { return c.clicked; }),
-                circles.end());
+                std::remove_if(circles.begin(), circles.end(), [](const Circle& c) { return c.clicked; }), circles.end()
+            );
         }
 
         // Animate circles: shrink them over time
         float delta_radius = state.decrement * (delta_time / 1000.0f);
-        for (auto it = circles.begin(); it != circles.end();) {
+        for(auto it = circles.begin(); it != circles.end();) {
             it->radius -= delta_radius;
-            if (it->radius <= 0.0f) {
-                if (!it->clicked) {
+            if(it->radius <= 0.0f) {
+                if(!it->clicked) {
                     state.click_counter--;
-                    if (state.click_counter < 0)
-                        state.click_counter = 0;
+                    if(state.click_counter < 0) state.click_counter = 0;
                 }
                 it = circles.erase(it);
-            } else {
+            }
+            else {
                 ++it;
             }
         }
@@ -158,27 +157,30 @@ int main(int, char**) {
         // Create a full-screen transparent window for drawing
         ImGui::SetNextWindowPos(ImVec2(0, 0));
         ImGui::SetNextWindowSize(io.DisplaySize);
-        ImGui::Begin("kicker", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoBackground);
+        ImGui::Begin(
+            "kicker", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoBackground
+        );
 
         // Draw circles using the window's draw list
         ImDrawList* draw_list = ImGui::GetWindowDrawList();
-        for (const auto& circle : circles) {
+        for(const auto& circle : circles) {
             draw_list->AddCircleFilled(circle.center, circle.radius, IM_COL32(255, 0, 0, 255), 32);
         }
         // Show counter change label at mouse click location with fade and float effect
-        if (last_delta != 0) {
+        if(last_delta != 0) {
             double elapsed = std::chrono::duration<double, std::milli>(current_time - label_time).count();
             if(elapsed < 2000) {
                 float alpha = static_cast<float>(255 * (1.0 - elapsed / 2000.0));
-                ImU32 color = last_delta > 0 ? IM_COL32(0,255,0,static_cast<int>(alpha))
-                                             : IM_COL32(255,0,0,static_cast<int>(alpha));
+                ImU32 color = last_delta > 0 ? IM_COL32(0, 255, 0, static_cast<int>(alpha))
+                                             : IM_COL32(255, 0, 0, static_cast<int>(alpha));
                 char delta_buf[32];
                 snprintf(delta_buf, sizeof(delta_buf), "%+d", last_delta);
                 // Draw the label with a vertical float-up effect
                 draw_list->AddText(ImVec2(last_click_pos.x, last_click_pos.y - label_offset), color, delta_buf);
                 // Increase the offset to float up (~20 pixels per second)
                 label_offset += 20.0f * (static_cast<float>(delta_time) / 1000.0f);
-            } else {
+            }
+            else {
                 last_delta = 0;
             }
         }
@@ -186,7 +188,7 @@ int main(int, char**) {
         {
             char counter_buf[64];
             snprintf(counter_buf, sizeof(counter_buf), "Click Counter: %d", state.click_counter);
-            draw_list->AddText(ImVec2(10, 10), IM_COL32(255,255,255,255), counter_buf);
+            draw_list->AddText(ImVec2(10, 10), IM_COL32(255, 255, 255, 255), counter_buf);
         }
         ImGui::End();
 
@@ -207,5 +209,6 @@ int main(int, char**) {
     ImGui::DestroyContext();
     glfwDestroyWindow(window);
     glfwTerminate();
+
     return 0;
 }
