@@ -85,6 +85,8 @@ int main(int, char**)
     int creation_interval = state.get_creation_interval();
     static int last_delta = 0;
     static ImVec2 last_click_pos;
+    static auto label_time = std::chrono::high_resolution_clock::now();
+    static float label_offset = 0.0f;
 
     while (!glfwWindowShouldClose(window))
     {
@@ -122,9 +124,11 @@ int main(int, char**)
             state.click_counter += delta;
             if (state.click_counter < 0)
                 state.click_counter = 0;
-            // Store the delta and click position for display (for one frame)
+            // Store the delta and click position for display
             last_delta = delta;
             last_click_pos = mouse_pos;
+            label_time = current_time;
+            label_offset = 0.0f;
             // Remove clicked circles
             circles.erase(
                 std::remove_if(circles.begin(), circles.end(), [](const Circle& c) { return c.clicked; }),
@@ -162,13 +166,22 @@ int main(int, char**)
         for (const auto& circle : circles) {
             draw_list->AddCircleFilled(circle.center, circle.radius, IM_COL32(255, 0, 0, 255), 32);
         }
-        // Show counter change label at mouse click location
+        // Show counter change label at mouse click location with fade and float effect
         if (last_delta != 0) {
-            ImU32 color = last_delta > 0 ? IM_COL32(0,255,0,255) : IM_COL32(255,0,0,255);
-            char delta_buf[32];
-            snprintf(delta_buf, sizeof(delta_buf), "%+d", last_delta);
-            draw_list->AddText(last_click_pos, color, delta_buf);
-            last_delta = 0;
+            double elapsed = std::chrono::duration<double, std::milli>(current_time - label_time).count();
+            if(elapsed < 2000) {
+                float alpha = static_cast<float>(255 * (1.0 - elapsed / 2000.0));
+                ImU32 color = last_delta > 0 ? IM_COL32(0,255,0,static_cast<int>(alpha))
+                                             : IM_COL32(255,0,0,static_cast<int>(alpha));
+                char delta_buf[32];
+                snprintf(delta_buf, sizeof(delta_buf), "%+d", last_delta);
+                // Draw the label with a vertical float-up effect
+                draw_list->AddText(ImVec2(last_click_pos.x, last_click_pos.y - label_offset), color, delta_buf);
+                // Increase the offset to float up (~20 pixels per second)
+                label_offset += 20.0f * (static_cast<float>(delta_time) / 1000.0f);
+            } else {
+                last_delta = 0;
+            }
         }
         ImGui::End();
 
