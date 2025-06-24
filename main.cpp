@@ -182,6 +182,12 @@ int main(int, char**) {
                 last_delta = 0;
             }
         }
+        // Display the click counter value in the top-left corner
+        {
+            char counter_buf[64];
+            snprintf(counter_buf, sizeof(counter_buf), "Click Counter: %d", state.click_counter);
+            draw_list->AddText(ImVec2(10, 10), IM_COL32(255,255,255,255), counter_buf);
+        }
         ImGui::End();
 
         // Rendering
