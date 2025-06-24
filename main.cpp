@@ -83,6 +83,8 @@ int main(int, char**)
     auto last_time = std::chrono::high_resolution_clock::now();
     double circle_timer = 0.0;
     int creation_interval = state.get_creation_interval();
+    static int last_delta = 0;
+    static ImVec2 last_click_pos;
 
     while (!glfwWindowShouldClose(window))
     {
@@ -104,20 +106,25 @@ int main(int, char**)
         if (ImGui::IsMouseClicked(0)) {
             ImVec2 mouse_pos = ImGui::GetMousePos();
             bool clicked_any = false;
+            int delta = 0;
             for (auto& circle : circles) {
                 float dx = mouse_pos.x - circle.center.x;
                 float dy = mouse_pos.y - circle.center.y;
                 if (std::sqrt(dx*dx + dy*dy) <= circle.radius) {
                     circle.clicked = true;
-                    state.click_counter++;
+                    delta++;
                     clicked_any = true;
                 }
             }
             if (!clicked_any) {
-                state.click_counter--;
-                if (state.click_counter < 0)
-                    state.click_counter = 0;
+                delta = -1;
             }
+            state.click_counter += delta;
+            if (state.click_counter < 0)
+                state.click_counter = 0;
+            // Store the delta and click position for display (for one frame)
+            last_delta = delta;
+            last_click_pos = mouse_pos;
             // Remove clicked circles
             circles.erase(
                 std::remove_if(circles.begin(), circles.end(), [](const Circle& c) { return c.clicked; }),
@@ -155,10 +162,14 @@ int main(int, char**)
         for (const auto& circle : circles) {
             draw_list->AddCircleFilled(circle.center, circle.radius, IM_COL32(255, 0, 0, 255), 32);
         }
-        // Draw the click counter at the top-left corner
-        char counter_buf[64];
-        snprintf(counter_buf, sizeof(counter_buf), "Counter: %d", state.click_counter);
-        draw_list->AddText(ImVec2(10, 10), IM_COL32(0, 255, 0, 255), counter_buf);
+        // Show counter change label at mouse click location
+        if (last_delta != 0) {
+            ImU32 color = last_delta > 0 ? IM_COL32(0,255,0,255) : IM_COL32(255,0,0,255);
+            char delta_buf[32];
+            snprintf(delta_buf, sizeof(delta_buf), "%+d", last_delta);
+            draw_list->AddText(last_click_pos, color, delta_buf);
+            last_delta = 0;
+        }
         ImGui::End();
 
         // Rendering
