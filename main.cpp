@@ -57,8 +57,7 @@ void schedule_circle_creation(float win_width, float win_height, double& circle_
     creation_interval = state.get_creation_interval();
 }
 
-int main(int, char**)
-{
+int main(int, char**) {
     // Setup GLFW window
     if (!glfwInit())
         return 1;
