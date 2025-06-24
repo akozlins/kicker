@@ -1,14 +1,15 @@
-#include <iostream>
-#include <gtkmm/application.h>
-#include <gtkmm/window.h>
-#include <gdkmm/event.h>
-#include <cairomm/context.h>
-#include <glibmm/main.h>
-#include <cmath>
-#include <cstdlib>
-#include <ctime>
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_opengl3.h"
+#include <stdio.h>
+#include <GLFW/glfw3.h>
+#include <vector>
 #include <random>
+#include <chrono>
+#include <cmath>
+#include <cstdio>
 
+// Data structures based on previous state_t and Circle
 struct state_t {
     double min_radius;
     double max_radius;
@@ -21,126 +22,158 @@ struct state_t {
     int click_counter;
     int get_creation_interval() const {
         static std::mt19937 rng(std::random_device{}());
-        std::uniform_int_distribution<int> dist(min_creation_interval/(1+0.1*click_counter), max_creation_interval/(1+0.1*click_counter));
+        // Adjust interval based on click_counter as before.
+        std::uniform_int_distribution<int> dist(min_creation_interval / (1 + 0.1 * click_counter),
+                                                  max_creation_interval / (1 + 0.1 * click_counter));
         return dist(rng);
     }
 };
 
 static state_t state = { 20.0, 80.0, 500, 2000, 1000, 1000, 1, 5.0, 0 };
 
-class MyWindow : public Gtk::Window {
-public:
-    MyWindow() {
-        set_app_paintable(true);
-        add_events(Gdk::BUTTON_PRESS_MASK);
-        m_animation_connection = Glib::signal_timeout().connect(sigc::mem_fun(*this, &MyWindow::on_timeout), 33);
-        schedule_circle_creation();
-    }
+struct Circle {
+    float radius;
+    ImVec2 center;
+    bool clicked;
+};
 
-protected:
-    bool on_button_press_event(GdkEventButton* event) override {
-        double click_x = event->x;
-        double click_y = event->y;
-        bool clicked_any = false;
-        for(auto& circle : m_circles) {
-            double dx = click_x - circle.center_x;
-            double dy = click_y - circle.center_y;
-            if (std::sqrt(dx*dx + dy*dy) <= circle.radius) {
-                circle.clicked = true;
-                state.click_counter++;
-                clicked_any = true;
-            }
+static std::vector<Circle> circles;
+static std::mt19937 rng(std::random_device{}());
+
+void schedule_circle_creation(float win_width, float win_height, double& circle_timer, int& creation_interval) {
+    if(circles.size() < static_cast<size_t>(5 + state.circle_coeff * state.click_counter)) {
+        std::uniform_real_distribution<float> dist_radius(state.min_radius, state.max_radius);
+        float radius = dist_radius(rng);
+        std::uniform_real_distribution<float> dist_x(radius, win_width - radius);
+        std::uniform_real_distribution<float> dist_y(radius, win_height - radius);
+        float x = dist_x(rng);
+        float y = dist_y(rng);
+        circles.push_back({ radius, ImVec2(x, y), false });
+    }
+    circle_timer = 0.0;
+    creation_interval = state.get_creation_interval();
+}
+
+int main(int, char**)
+{
+    // Setup GLFW window
+    if (!glfwInit())
+        return 1;
+    const char* glsl_version = "#version 130";
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+    GLFWwindow* window = glfwCreateWindow(state.initial_width, state.initial_height, "kicker (imgui)", NULL, NULL);
+    if (window == NULL)
+        return 1;
+    glfwMakeContextCurrent(window);
+    glfwSwapInterval(1); // Enable vsync
+
+    // Setup Dear ImGui context
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO(); (void)io;
+    // Setup Dear ImGui style and backend
+    ImGui::StyleColorsDark();
+    ImGui_ImplGlfw_InitForOpenGL(window, true);
+    ImGui_ImplOpenGL3_Init(glsl_version);
+
+    auto last_time = std::chrono::high_resolution_clock::now();
+    double circle_timer = 0.0;
+    int creation_interval = state.get_creation_interval();
+
+    while (!glfwWindowShouldClose(window))
+    {
+        glfwPollEvents();
+        auto current_time = std::chrono::high_resolution_clock::now();
+        double delta_time = std::chrono::duration<double, std::milli>(current_time - last_time).count();
+        last_time = current_time;
+        circle_timer += delta_time;
+
+        int win_width, win_height;
+        glfwGetWindowSize(window, &win_width, &win_height);
+
+        // Create circle at random intervals
+        if(circle_timer >= creation_interval) {
+            schedule_circle_creation((float)win_width, (float)win_height, circle_timer, creation_interval);
         }
-        if (!clicked_any) {
-            state.click_counter--;
-            if (state.click_counter < 0) {
-                state.click_counter = 0;
-            }
-        }
-        // Remove all circles that were clicked.
-        m_circles.erase(
-            std::remove_if(m_circles.begin(), m_circles.end(), [](const Circle& c) { return c.clicked; }),
-            m_circles.end());
-        std::cout << "Click counter: " << state.click_counter << std::endl;
-        return true;
-    }
 
-    bool on_circle_creation() {
-        const int win_width = get_allocated_width();
-        const int win_height = get_allocated_height();
-        if(m_circles.size() < static_cast<size_t>(5 + state.circle_coeff * state.click_counter)) {
-            static std::mt19937 rng(std::random_device{}());
-            std::uniform_real_distribution<double> dist_radius(state.min_radius, state.max_radius);
-            double radius = dist_radius(rng);
-            std::uniform_real_distribution<double> dist_x(radius, win_width - radius);
-            std::uniform_real_distribution<double> dist_y(radius, win_height - radius);
-            double center_x = dist_x(rng);
-            double center_y = dist_y(rng);
-            m_circles.push_back({radius, center_x, center_y});
-        }
-        schedule_circle_creation();
-        return false;
-    }
-
-    void schedule_circle_creation() {
-        int interval = state.get_creation_interval();
-        m_creation_connection = Glib::signal_timeout().connect(sigc::mem_fun(*this, &MyWindow::on_circle_creation), interval);
-    }
-
-    bool on_draw(const Cairo::RefPtr<Cairo::Context>& cr) override {
-        for (const auto& circle : m_circles) {
-            cr->set_source_rgb(1, 0, 0);
-            cr->arc(circle.center_x, circle.center_y, circle.radius, 0, 2 * M_PI);
-            cr->fill();
-        }
-         // Draw counter in top-left corner
-         cr->set_source_rgb(0, 1, 0);
-         cr->select_font_face("Sans", Cairo::FONT_SLANT_NORMAL, Cairo::FONT_WEIGHT_BOLD);
-         cr->set_font_size(20);
-         {
-             std::string counter_text = "Counter: " + std::to_string(state.click_counter);
-             cr->move_to(10, 30);
-             cr->show_text(counter_text);
-         }
-        return true;
-    }
-
-    bool on_timeout() {
-        double delta = state.decrement * 33 / 1000.0;
-        for(auto it = m_circles.begin(); it != m_circles.end();) {
-            it->radius -= delta;
-            if(it->radius <= 0) {
-                if(!it->clicked) {  // Only decrement if circle was not clicked
-                    state.click_counter--;
-                    if(state.click_counter < 0) {
-                        state.click_counter = 0;
-                    }
+        // Handle mouse clicks
+        if (ImGui::IsMouseClicked(0)) {
+            ImVec2 mouse_pos = ImGui::GetMousePos();
+            bool clicked_any = false;
+            for (auto& circle : circles) {
+                float dx = mouse_pos.x - circle.center.x;
+                float dy = mouse_pos.y - circle.center.y;
+                if (std::sqrt(dx*dx + dy*dy) <= circle.radius) {
+                    circle.clicked = true;
+                    state.click_counter++;
+                    clicked_any = true;
                 }
-                it = m_circles.erase(it);
+            }
+            if (!clicked_any) {
+                state.click_counter--;
+                if (state.click_counter < 0)
+                    state.click_counter = 0;
+            }
+            // Remove clicked circles
+            circles.erase(
+                std::remove_if(circles.begin(), circles.end(), [](const Circle& c) { return c.clicked; }),
+                circles.end());
+        }
+
+        // Animate circles: shrink them over time
+        float delta_radius = state.decrement * (delta_time / 1000.0f);
+        for (auto it = circles.begin(); it != circles.end();) {
+            it->radius -= delta_radius;
+            if (it->radius <= 0.0f) {
+                if (!it->clicked) {
+                    state.click_counter--;
+                    if (state.click_counter < 0)
+                        state.click_counter = 0;
+                }
+                it = circles.erase(it);
             } else {
                 ++it;
             }
         }
-        queue_draw();
-        return true;
+
+        // Start the ImGui frame
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+
+        // Create a full-screen transparent window for drawing
+        ImGui::SetNextWindowPos(ImVec2(0, 0));
+        ImGui::SetNextWindowSize(io.DisplaySize);
+        ImGui::Begin("kicker", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoBackground);
+
+        // Draw circles using the window's draw list
+        ImDrawList* draw_list = ImGui::GetWindowDrawList();
+        for (const auto& circle : circles) {
+            draw_list->AddCircleFilled(circle.center, circle.radius, IM_COL32(255, 0, 0, 255), 32);
+        }
+        // Draw the click counter at the top-left corner
+        char counter_buf[64];
+        snprintf(counter_buf, sizeof(counter_buf), "Counter: %d", state.click_counter);
+        draw_list->AddText(ImVec2(10, 10), IM_COL32(0, 255, 0, 255), counter_buf);
+        ImGui::End();
+
+        // Rendering
+        ImGui::Render();
+        int display_w, display_h;
+        glfwGetFramebufferSize(window, &display_w, &display_h);
+        glViewport(0, 0, display_w, display_h);
+        glClearColor(0.45f, 0.55f, 0.60f, 1.00f);
+        glClear(GL_COLOR_BUFFER_BIT);
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+        glfwSwapBuffers(window);
     }
 
-private:
-    struct Circle {
-        double radius;
-        double center_x;
-        double center_y;
-        bool clicked;
-    };
-    std::vector<Circle> m_circles;
-    sigc::connection m_animation_connection;
-    sigc::connection m_creation_connection;
-};
-
-int main(int argc, char *argv[]) {
-    auto app = Gtk::Application::create(argc, argv, "org.gtkmm.kicker");
-    MyWindow window;
-    window.set_default_size(state.initial_width, state.initial_height);
-    window.set_resizable(false);
-    return app->run(window);
+    // Cleanup
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
+    glfwDestroyWindow(window);
+    glfwTerminate();
+    return 0;
 }
