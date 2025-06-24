@@ -57,8 +57,7 @@ void schedule_circle_creation(float win_width, float win_height, double& circle_
     creation_interval = state.get_creation_interval();
 }
 
-int main(int, char**)
-{
+int main(int, char**) {
     // Setup GLFW window
     if (!glfwInit())
         return 1;
@@ -182,6 +181,12 @@ int main(int, char**)
             } else {
                 last_delta = 0;
             }
+        }
+        // Display the click counter value in the top-left corner
+        {
+            char counter_buf[64];
+            snprintf(counter_buf, sizeof(counter_buf), "Click Counter: %d", state.click_counter);
+            draw_list->AddText(ImVec2(10, 10), IM_COL32(255,255,255,255), counter_buf);
         }
         ImGui::End();
 
