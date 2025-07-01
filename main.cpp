@@ -28,7 +28,8 @@ struct state_t {
         static std::mt19937 rng(std::random_device {}());
         // Adjust interval based on click_counter as before.
         std::uniform_int_distribution<int> dist(
-            min_creation_interval / (1 + 0.1 * click_counter), max_creation_interval / (1 + 0.1 * click_counter)
+            min_creation_interval / (1 + 0.2 * click_counter),
+            max_creation_interval / (1 + 0.2 * click_counter)
         );
         return dist(rng);
     }
@@ -38,8 +39,10 @@ static state_t state = { 20.0, 80.0, 500, 2000, 1000, 1000, 1, 5.0, 0 };
 
 struct Circle {
     float radius;
+    float target_radius; // New: target radius for growth/shrink
     ImVec2 center;
     bool clicked;
+    bool growing; // New: flag to track growth phase
 };
 
 static std::vector<Circle> circles;
@@ -48,12 +51,12 @@ static std::mt19937 rng(std::random_device {}());
 void schedule_circle_creation(float win_width, float win_height, double& circle_timer, int& creation_interval) {
     if(circles.size() < static_cast<size_t>(5 + state.circle_coeff * state.click_counter)) {
         std::uniform_real_distribution<float> dist_radius(state.min_radius, state.max_radius);
-        float radius = dist_radius(rng);
-        std::uniform_real_distribution<float> dist_x(radius, win_width - radius);
-        std::uniform_real_distribution<float> dist_y(radius, win_height - radius);
+        float target_radius = dist_radius(rng);
+        std::uniform_real_distribution<float> dist_x(target_radius, win_width - target_radius);
+        std::uniform_real_distribution<float> dist_y(target_radius, win_height - target_radius);
         float x = dist_x(rng);
         float y = dist_y(rng);
-        circles.push_back({ radius, ImVec2(x, y), false });
+        circles.push_back({ 0.0f, target_radius, ImVec2(x, y), false, true }); // Start with zero radius, target_radius, and growing flag
     }
     circle_timer = 0.0;
     creation_interval = state.get_creation_interval();
@@ -133,20 +136,26 @@ int main(int, char**) {
             );
         }
 
-        // Animate circles: shrink them over time
+        // Animate circles: grow to target radius, then shrink
         float delta_radius = state.decrement * (delta_time / 1000.0f);
         for(auto it = circles.begin(); it != circles.end();) {
-            it->radius -= delta_radius;
-            if(it->radius <= 0.0f) {
-                if(!it->clicked) {
-                    state.click_counter--;
-                    if(state.click_counter < 0) state.click_counter = 0;
+            if (it->growing) { // Growth phase
+                it->radius += delta_radius; // Adjust delta_radius for growth speed if needed
+                if (it->radius >= it->target_radius) {
+                    it->growing = false;
                 }
-                it = circles.erase(it);
+            } else { // Shrink phase
+                it->radius -= delta_radius;
+                if (it->radius <= 0.0f) {
+                    if(!it->clicked) {
+                        state.click_counter--;
+                        if(state.click_counter < 0) state.click_counter = 0;
+                    }
+                    it = circles.erase(it);
+                    continue;
+                }
             }
-            else {
-                ++it;
-            }
+            ++it;
         }
 
         // Start the ImGui frame
